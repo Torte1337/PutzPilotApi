@@ -1,0 +1,6 @@
+@PutzPilotApi_HostAddress = http://localhost:5198
+
+GET {{PutzPilotApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
