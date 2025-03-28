@@ -1,4 +1,5 @@
 using System;
+using PutzPilotApi.Enums;
 
 namespace PutzPilotApi.RequestModels;
 
@@ -10,4 +11,5 @@ public class CreateEmployeeRequest
         public string? Lastname { get; set; }
         public string Surname { get; set; }
         public bool IsActive { get; set; }
+        public string Role { get; set; }
 }

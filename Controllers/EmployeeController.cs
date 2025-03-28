@@ -138,7 +138,8 @@ namespace PutzPilotApi.Controllers
                     Firstname = request.Firstname,
                     Lastname = request.Lastname,
                     Surname = request.Surname,
-                    IsActive = request.IsActive
+                    IsActive = request.IsActive,
+                    Role = request.Role
                 };
 
                 // Füge das Mitarbeiterobjekt zum DbContext hinzu

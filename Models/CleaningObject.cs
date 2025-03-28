@@ -14,5 +14,5 @@ public class CleaningObject
     public string CleaningDays { get; set; } // z. B. "Mo,Mi,Fr"
     public string CleaningTimeSpan { get; set; } // z. B. "01:30"
     public CleaningType CleaningType { get; set; }
-    public ICollection<WorkItem> WorkItems { get; set; }
+    public ICollection<WorkItem> WorkItems { get; set; } = new List<WorkItem>();
 }

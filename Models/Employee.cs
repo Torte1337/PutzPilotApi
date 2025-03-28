@@ -1,4 +1,5 @@
 using System;
+using PutzPilotApi.Enums;
 using PutzPilotApi.RequestModels;
 
 namespace PutzPilotApi.Models;
@@ -12,6 +13,7 @@ public class Employee
     public string Firstname {get;set;}
     public string? Lastname {get;set;}
     public string Surname {get;set;}
-    public ICollection<VacationRequest> VacationRequests {get;set;} 
+    public ICollection<VacationRequest> VacationRequests {get;set;} = new List<VacationRequest>();
     public bool IsActive {get;set;}
+    public string Role { get; set; }
 }
