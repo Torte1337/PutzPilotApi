@@ -12,6 +12,11 @@ public class PutzPilotDbContext : DbContext
     public DbSet<CleaningObject> CleaningObjects {get;set;}
     public DbSet<VacationRequest> VacationRequests {get;set;}
 
+
+    public PutzPilotDbContext(DbContextOptions<PutzPilotDbContext> options) : base(options)
+    {
+        
+    }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

@@ -13,4 +13,5 @@ public class Employee
     public string? Lastname {get;set;}
     public string Surname {get;set;}
     public ICollection<VacationRequest> VacationRequests {get;set;} 
+    public bool IsActive {get;set;}
 }

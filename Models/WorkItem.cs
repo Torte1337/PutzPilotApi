@@ -16,4 +16,5 @@ public class WorkItem
 
     public Guid ObjectId {get;set;}
     public CleaningObject Object {get;set;}
+    public Guid EmployeeId {get;set;}
 }

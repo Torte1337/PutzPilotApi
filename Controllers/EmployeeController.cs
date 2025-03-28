@@ -7,105 +7,250 @@ using PutzPilotApi.Models;
 using PutzPilotApi.RequestModels;
 using PutzPilotApi.Enums;
 
-namespace PutzPilotApi.Controllers;
-
-[ApiController]
-[Route("api/[Controller]")]
-public class EmployeeController : ControllerBase
+namespace PutzPilotApi.Controllers
 {
-    private readonly PutzPilotDbContext context;
-
-    public EmployeeController(PutzPilotDbContext _ctx)
+    [ApiController]
+    [Route("api/[Controller]")]
+    public class EmployeeController : ControllerBase
     {
-        context = _ctx;
-    }
+        private readonly PutzPilotDbContext context;
+        private readonly string _connectionString = "Persist Security Info=False;Server=db1045676903.hosting-data.io;Initial Catalog=PutzPilotDB;User Id=dbo1045676903;Password=Putzpilot2025#;";
 
-    [HttpGet("login")]
-    public async Task<IActionResult> OnLogin([FromBody] LoginRequest request)
-    {
-        var user = await context.Employees.FirstOrDefaultAsync(x => x.Username == request.Username);
 
-        if(user == null)
-            return Unauthorized("Benutzer nicht gefunden");
-        
-        bool valid = PasswordManager.OnVerifyPassword(request.Password,user.PasswordSalt,user.PasswordHash);
-
-        if(!valid)
-            return Unauthorized("Benutzername oder Passwort ist falsch");
-        
-        return Ok(new
+        public EmployeeController(PutzPilotDbContext _ctx)
         {
-            Message = "Login erfolgreich",
-            EmployeeId = user.Id,
-            Name = $"{user.Firstname} {user.Surname}"
-        });
-    }
+            context = _ctx;
+        }
+
+        [HttpGet("login")]
+        public async Task<IActionResult> OnLogin([FromBody] LoginRequest request)
+        {
+            var user = await context.Employees.FirstOrDefaultAsync(x => x.Username == request.Username);
+
+            if (user == null)
+                return Unauthorized("Benutzer nicht gefunden");
+
+            // Verifiziere das Passwort
+            bool valid = PasswordManager.OnVerifyPassword(request.Password, user.PasswordSalt, user.PasswordHash);
+
+            if (!valid)
+                return Unauthorized("Benutzername oder Passwort ist falsch");
+
+            return Ok(new
+            {
+                Message = "Login erfolgreich",
+                EmployeeId = user.Id,
+                Name = $"{user.Firstname} {user.Surname}"
+            });
+        }
+
+        [HttpPost("logout")]
+        public IActionResult OnLogout()
+        {
+            // Hier kann man bei Bedarf Session-Management hinzufügen, aber für die API reicht es so.
+            return Ok(new { Message = "Logout erfolgreich" });
+        }
+
+        [HttpPost("{employeeId}/vacation")]
+        public async Task<IActionResult> OnCreateVacationRequest(Guid employeeId, [FromBody] VacationRequestDto request)
+        {
+            var employee = await context.Employees.FindAsync(employeeId);
+
+            if (employee == null)
+                return NotFound("Mitarbeiter nicht gefunden");
+
+            var vacation = new VacationRequest
+            {
+                Id = Guid.NewGuid(),
+                EmployeeId = employeeId,
+                StartDate = request.StartDate,
+                EndDate = request.EndDate,
+                Note = request.Note,
+                Status = VacationStatus.Requested
+            };
+
+            context.VacationRequests.Add(vacation);
+            await context.SaveChangesAsync();
+
+            return Ok(new { Message = "Urlaubsanfrage gesendet." });
+        }
+
+        [HttpGet("{employeeId}/vacation")]
+        public async Task<IActionResult> OnGetVacations(Guid employeeId)
+        {
+            var vacations = await context.VacationRequests
+                .Where(v => v.EmployeeId == employeeId)
+                .OrderBy(v => v.StartDate)
+                .ToListAsync();
+
+            return Ok(vacations);
+        }
+
+        [HttpGet("{employeeId}/vacation/summary")]
+        public async Task<IActionResult> OnGetVacationSummary(Guid employeeId)
+        {
+            const int annualAllowance = 30;
+
+            var approved = await context.VacationRequests
+                .Where(v => v.EmployeeId == employeeId && v.Status == VacationStatus.Approved)
+                .ToListAsync();
+
+            int usedDays = approved.Sum(v => (v.EndDate - v.StartDate).Days + 1);
+            int remaining = annualAllowance - usedDays;
+
+            var planned = await context.VacationRequests
+                .Where(v => v.EmployeeId == employeeId && v.Status == VacationStatus.Requested)
+                .ToListAsync();
+
+            int plannedDays = planned.Sum(v => (v.EndDate - v.StartDate).Days + 1);
+
+            return Ok(new
+            {
+                Annual = annualAllowance,
+                Used = usedDays,
+                Planned = plannedDays,
+                Available = remaining
+            });
+        }
     
-    [HttpPost("logout")]
-    public IActionResult OnLogout()
-    {
-        return Ok(new { Message = "Logout erfolgreich"});
-    }
-
-    [HttpPost("{employeeId}/vacation")]
-    public async Task<IActionResult> OnCreateVacationRequest(Guid employeeId, [FromBody] VacationRequestDto request)
-    {
-        var employee = await context.Employees.FindAsync(employeeId);
-
-        if(employee == null)
-            return NotFound("Mitarbeiter nicht gefunden");
-
-        var vacation = new VacationRequest
+        [HttpPost("create")]
+        public async Task<IActionResult> OnCreateEmployee([FromBody] CreateEmployeeRequest request)
         {
-            Id = Guid.NewGuid(),
-            EmployeeId = employeeId,
-            StartDate = request.StartDate,
-            EndDate = request.EndDate,
-            Note = request.Note,
-            Status = VacationStatus.Requested
-        };
+            try
+            {
+                // Prüfe, ob der Username bereits existiert
+                if (await context.Employees.AnyAsync(e => e.Username == request.Username))
+                {
+                    return BadRequest("Username bereits vergeben.");
+                }
 
-        context.VacationRequests.Add(vacation);
-        await context.SaveChangesAsync();
+                // Generiere Salt und Hash für das Passwort
+                var salt = PasswordManager.OnGenerateSalt();
+                var passwordHash = PasswordManager.OnHashPassword(request.Password, salt);
 
-        return Ok(new { Message = "Urlaubsanfrage gesendet."});
-    }
+                // Erstelle das Mitarbeiterobjekt
+                var employee = new Employee
+                {
+                    Id = Guid.NewGuid(),
+                    Username = request.Username,
+                    PasswordHash = passwordHash,
+                    PasswordSalt = salt,
+                    Firstname = request.Firstname,
+                    Lastname = request.Lastname,
+                    Surname = request.Surname,
+                    IsActive = request.IsActive
+                };
 
-    [HttpGet("{employeeId}/vacation")]
-    public async Task<IActionResult> OnGetVacations(Guid employeeId)
-    {
-        var vacations = await context.VacationRequests
-                        .Where(v => v.EmployeeId == employeeId)
-                        .OrderBy(v => v.StartDate)
-                        .ToListAsync();
-                    
-        return Ok(vacations);
-    }
+                // Füge das Mitarbeiterobjekt zum DbContext hinzu
+                context.Employees.Add(employee);
 
-    [HttpGet("{employeeId}/vacation/summary")]
-    public async Task<IActionResult> OnGetVacationSummary(Guid employeeId)
-    {
-        const int annualAllowance = 30;
+                // Speichere die Änderungen in der Datenbank
+                await context.SaveChangesAsync();
 
-        var approved = await context.VacationRequests
-            .Where(v => v.EmployeeId == employeeId && v.Status == VacationStatus.Approved)
-            .ToListAsync();
+                // Erfolgreiche Antwort zurückgeben
+                return Ok(new { Message = "Mitarbeiter erfolgreich erstellt", EmployeeId = employee.Id });
+            }
+            catch (Exception ex)
+            {
+                // Fehler loggen
+                Console.WriteLine(ex.Message);
+                return StatusCode(500, new { Message = "Es gab einen Fehler beim Erstellen des Mitarbeiters", Error = ex.Message });
+            }
+        }
 
-        int usedDays = approved.Sum(v => (v.EndDate - v.StartDate).Days + 1);
-        int remaining = annualAllowance - usedDays;
-
-        var planned = await context.VacationRequests
-            .Where(v => v.EmployeeId == employeeId && v.Status == VacationStatus.Requested)
-            .ToListAsync();
-
-        int plannedDays = planned.Sum(v => (v.EndDate - v.StartDate).Days + 1);
-
-        return Ok(new
+        [HttpDelete("delete/{employeeId}")]
+        public async Task<IActionResult> OnDeleteEmployee(Guid employeeId)
         {
-            Annual = annualAllowance,
-            Used = usedDays,
-            Planned = plannedDays,
-            Available = remaining
-        });
+            try
+            {
+                // Finde den Mitarbeiter in der Datenbank
+                var employee = await context.Employees.FindAsync(employeeId);
+
+                if (employee == null)
+                {
+                    return NotFound("Mitarbeiter nicht gefunden.");
+                }
+
+                // Entferne den Mitarbeiter aus der Datenbank
+                context.Employees.Remove(employee);
+                await context.SaveChangesAsync();
+
+                // Erfolgreiche Antwort zurückgeben
+                return Ok(new { Message = "Mitarbeiter erfolgreich gelöscht." });
+            }
+            catch (Exception ex)
+            {
+                // Fehler loggen
+                Console.WriteLine(ex.Message);
+                return StatusCode(500, new { Message = "Es gab einen Fehler beim Löschen des Mitarbeiters", Error = ex.Message });
+            }
+        }    
+    
+        [HttpPut("update/{employeeId}")]
+        public async Task<IActionResult> OnUpdateEmployee(Guid employeeId, [FromBody] CreateEmployeeRequest request)
+        {
+            try
+            {
+                // Finde den Mitarbeiter in der Datenbank
+                var employee = await context.Employees.FindAsync(employeeId);
+
+                if (employee == null)
+                {
+                    return NotFound("Mitarbeiter nicht gefunden.");
+                }
+
+                // Aktualisiere die Mitarbeiterdaten
+                employee.Username = request.Username;
+                employee.Firstname = request.Firstname;
+                employee.Lastname = request.Lastname;
+                employee.Surname = request.Surname;
+
+                // Speichere die Änderungen in der Datenbank
+                await context.SaveChangesAsync();
+
+                // Erfolgreiche Antwort zurückgeben
+                return Ok(new { Message = "Mitarbeiter erfolgreich aktualisiert." });
+            }
+            catch (Exception ex)
+            {
+                // Fehler loggen
+                Console.WriteLine(ex.Message);
+                return StatusCode(500, new { Message = "Es gab einen Fehler beim Aktualisieren des Mitarbeiters", Error = ex.Message });
+            }
+        }
+    
+        [HttpPut("deactivate/{employeeId}")]
+        public async Task<IActionResult> OnDeactivateEmployee(Guid employeeId)
+        {
+            try
+            {
+                // Finde den Mitarbeiter in der Datenbank
+                var employee = await context.Employees.FindAsync(employeeId);
+
+                if (employee == null)
+                {
+                    return NotFound("Mitarbeiter nicht gefunden.");
+                }
+
+                // Setze das IsActive-Flag auf false (Sperren)
+                employee.IsActive = false;
+
+                // Speichere die Änderungen in der Datenbank
+                await context.SaveChangesAsync();
+
+                // Erfolgreiche Antwort zurückgeben
+                return Ok(new { Message = "Mitarbeiter erfolgreich deaktiviert." });
+            }
+            catch (Exception ex)
+            {
+                // Fehler loggen
+                Console.WriteLine(ex.Message);
+                return StatusCode(500, new { Message = "Es gab einen Fehler beim Deaktivieren des Mitarbeiters", Error = ex.Message });
+            }
+        }
+    
+    
+    
+    
     }
 }

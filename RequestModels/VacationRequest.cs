@@ -11,6 +11,6 @@ public class VacationRequest
     public Employee Employee {get;set;}
     public DateTime StartDate {get;set;}
     public DateTime EndDate {get;set;}
-    public VactionStatus Status {get;set;} = VactionStatus.Requested;
+    public VacationStatus Status {get;set;} = VacationStatus.Requested;
     public string? Note {get;set;}
 }
