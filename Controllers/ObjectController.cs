@@ -12,6 +12,8 @@ namespace PutzPilotApi.Controllers;
 [Route("api/[controller]")]
 public class ObjectController : ControllerBase
 {
+    //TODO -> Objekte sollen ein Leistungsverzeichnis haben -> Aufgaben wie Staubwischen uvm.
+    //TODO Wie viel Zeit hat man maximal bei einem objekt -> Thema erstellung eines Objektes
     private readonly PutzPilotDbContext context;
 
     public ObjectController(PutzPilotDbContext _ctx)
