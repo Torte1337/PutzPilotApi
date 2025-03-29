@@ -12,7 +12,7 @@ using PutzPilotApi.Context;
 namespace PutzPilotApi.Migrations
 {
     [DbContext(typeof(PutzPilotDbContext))]
-    [Migration("20250328173130_1.Migration")]
+    [Migration("20250329063313_1.Migration")]
     partial class _1Migration
     {
         /// <inheritdoc />
