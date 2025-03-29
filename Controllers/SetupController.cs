@@ -31,6 +31,19 @@ public class SetupController : ControllerBase
             return StatusCode(500,$"Migration fehlgeschlagen: {ex.Message}");
         }
     }
+    [HttpGet("dbCheck")]
+    public async Task<IActionResult> OnCheckDatabaseIsOnline()
+    {
+        try
+        {
+            await context.Database.CanConnectAsync();
+            return Ok("Datenbank ist online und erreichbar");
+        }
+        catch(Exception ex)
+        {
+            return StatusCode(500, new { Message = "Fehler beim prüfen der Datenbankverbindung", Error = ex.Message});
+        }
+    }
 
     [HttpGet("check")]
     public async Task<IActionResult> OnCheckDatabase()
