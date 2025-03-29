@@ -1,10 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using PutzPilotApi.Context;
+using PutzPilotApi.Settings;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // 👇 Add config from appsettings.json
 builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+
+builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
 
 // 👇 Register DbContext
 builder.Services.AddDbContext<PutzPilotDbContext>(options =>

@@ -14,44 +14,13 @@ namespace PutzPilotApi.Controllers
     public class EmployeeController : ControllerBase
     {
         private readonly PutzPilotDbContext context;
-        private readonly string _connectionString = "Persist Security Info=False;Server=db1045676903.hosting-data.io;Initial Catalog=PutzPilotDB;User Id=dbo1045676903;Password=Putzpilot2025#;";
-
-
+   
         public EmployeeController(PutzPilotDbContext _ctx)
         {
             context = _ctx;
         }
 
-        [HttpGet("login")]
-        public async Task<IActionResult> OnLogin([FromBody] LoginRequest request)
-        {
-            var user = await context.Employees.FirstOrDefaultAsync(x => x.Username == request.Username);
-
-            if (user == null)
-                return Unauthorized("Benutzer nicht gefunden");
-
-            // Verifiziere das Passwort
-            bool valid = PasswordManager.OnVerifyPassword(request.Password, user.PasswordSalt, user.PasswordHash);
-
-            if (!valid)
-                return Unauthorized("Benutzername oder Passwort ist falsch");
-
-            return Ok(new
-            {
-                Message = "Login erfolgreich",
-                EmployeeId = user.Id,
-                Name = $"{user.Firstname} {user.Surname}"
-            });
-        }
-
-        [HttpPost("logout")]
-        public IActionResult OnLogout()
-        {
-            // Hier kann man bei Bedarf Session-Management hinzufügen, aber für die API reicht es so.
-            return Ok(new { Message = "Logout erfolgreich" });
-        }
-
-        [HttpPost("{employeeId}/vacation")]
+        [HttpPost("{employeeId}/createvacation")]
         public async Task<IActionResult> OnCreateVacationRequest(Guid employeeId, [FromBody] VacationRequestDto request)
         {
             var employee = await context.Employees.FindAsync(employeeId);
@@ -75,7 +44,7 @@ namespace PutzPilotApi.Controllers
             return Ok(new { Message = "Urlaubsanfrage gesendet." });
         }
 
-        [HttpGet("{employeeId}/vacation")]
+        [HttpGet("{employeeId}/getvacation")]
         public async Task<IActionResult> OnGetVacations(Guid employeeId)
         {
             var vacations = await context.VacationRequests
